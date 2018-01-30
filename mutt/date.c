@@ -46,8 +46,8 @@
 #include <string.h>
 #include <time.h>
 #include "date.h"
-#include "debug.h"
 #include "memory.h"
+#include "logging.h"
 #include "string2.h"
 
 /* theoretically time_t can be float but it is integer on most (if not all) systems */

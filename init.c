@@ -1762,7 +1762,7 @@ static int parse_alias(struct Buffer *buf, struct Buffer *s, unsigned long data,
   mutt_group_context_add_addrlist(gc, tmp->addr);
   mutt_alias_add_reverse(tmp);
 
-  if (debuglevel >= 2)
+  if (DebugLevel > 2)
   {
     /* A group is terminated with an empty address, so check a->mailbox */
     for (struct Address *a = tmp->addr; a && a->mailbox; a = a->next)
@@ -1903,11 +1903,7 @@ static void restore_default(struct Option *p)
       break;
     case DT_PATH:
       FREE((char **) p->var);
-      char *init = NULL;
-      if (mutt_str_strcmp(p->name, "debug_file") == 0 && debugfile_cmdline)
-        init = debugfile_cmdline;
-      else
-        init = (char *) p->initial;
+      char *init = (char *) p->initial;
       if (init)
       {
         char path[_POSIX_PATH_MAX];
@@ -1933,10 +1929,7 @@ static void restore_default(struct Option *p)
     case DT_NUMBER:
     case DT_SORT:
     case DT_MAGIC:
-      if (mutt_str_strcmp(p->name, "debug_level") == 0 && debuglevel_cmdline)
-        *((short *) p->var) = debuglevel_cmdline;
-      else
-        *((short *) p->var) = p->initial;
+      *((short *) p->var) = p->initial;
       break;
     case DT_REGEX:
     {
@@ -2074,67 +2067,6 @@ char **mutt_envlist(void)
   return envlist;
 }
 
-/**
- * start_debug - prepare the debugging file
- *
- * This method prepares and opens a new debug file for mutt_debug.
- */
-static void start_debug(void)
-{
-  if (!DebugFile)
-    return;
-
-  char buf[_POSIX_PATH_MAX];
-
-  /* rotate the old debug logs */
-  for (int i = 3; i >= 0; i--)
-  {
-    snprintf(debugfilename, sizeof(debugfilename), "%s%d", DebugFile, i);
-    snprintf(buf, sizeof(buf), "%s%d", DebugFile, i + 1);
-
-    mutt_expand_path(debugfilename, sizeof(debugfilename));
-    mutt_expand_path(buf, sizeof(buf));
-    rename(debugfilename, buf);
-  }
-
-  debugfile = mutt_file_fopen(debugfilename, "w");
-  if (debugfile)
-  {
-    setbuf(debugfile, NULL); /* don't buffer the debugging output! */
-    mutt_debug(1, "NeoMutt/%s debugging at level %d\n", PACKAGE_VERSION, debuglevel);
-  }
-}
-
-/**
- * restart_debug - reload the debugging configuration
- *
- * This method closes the old debug file is debug was enabled,
- * then reconfigure the debugging system from the configuration options
- * and start a new debug file if debug is enabled
- */
-static void restart_debug(void)
-{
-  bool disable_debug = (debuglevel > 0 && DebugLevel == 0);
-  bool enable_debug = (debuglevel == 0 && DebugLevel > 0);
-  bool file_changed =
-      ((mutt_str_strlen(debugfilename) - 1) != mutt_str_strlen(DebugFile) ||
-       mutt_str_strncmp(debugfilename, DebugFile, mutt_str_strlen(debugfilename) - 1));
-
-  if (disable_debug || file_changed)
-  {
-    mutt_debug(1, "NeoMutt/%s stop debugging\n", PACKAGE_VERSION);
-    mutt_file_fclose(&debugfile);
-  }
-
-  if (!enable_debug && !disable_debug && debuglevel != DebugLevel)
-    mutt_debug(1, "NeoMutt/%s debugging at level %d\n", PACKAGE_VERSION, DebugLevel);
-
-  debuglevel = DebugLevel;
-
-  if (enable_debug || (file_changed && debuglevel > 0))
-    start_debug();
-}
-
 /* mutt_envlist_set - Helper function for parse_setenv()
  * @param name      Name of the environment variable
  * @param value     Value the envionment variable should have
@@ -2212,6 +2144,7 @@ static int parse_setenv(struct Buffer *tmp, struct Buffer *s,
     int found = 0;
     while (envp && *envp)
     {
+      /* This will display all matches for "^QUERY" */
       if (mutt_str_strncmp(tmp->data, *envp, len) == 0)
       {
         if (!found)
@@ -2500,21 +2433,16 @@ static int parse_set(struct Buffer *tmp, struct Buffer *s, unsigned long data,
         }
         else if ((idx >= 0) && (DTYPE(MuttVars[idx].type) == DT_PATH))
         {
-          if (mutt_str_strcmp(MuttVars[idx].name, "debug_file") == 0 && debugfile_cmdline)
-          {
-            mutt_message(_("set debug_file ignored, it has been overridden by "
-                           "the cmdline"));
-            break;
-          }
           /* MuttVars[idx].var is already 'char**' (or some 'void**') or...
            * so cast to 'void*' is okay */
           FREE((void *) MuttVars[idx].var);
 
           mutt_str_strfcpy(scratch, tmp->data, sizeof(scratch));
           mutt_expand_path(scratch, sizeof(scratch));
-          *((char **) MuttVars[idx].var) = mutt_str_strdup(scratch);
           if (mutt_str_strcmp(MuttVars[idx].name, "debug_file") == 0)
-            restart_debug();
+            mutt_log_set_file(scratch);
+          else
+            *((char **) MuttVars[idx].var) = mutt_str_strdup(scratch);
         }
         else if ((idx >= 0) && (DTYPE(MuttVars[idx].type) == DT_STRING))
         {
@@ -2674,12 +2602,9 @@ static int parse_set(struct Buffer *tmp, struct Buffer *s, unsigned long data,
         r = -1;
         break;
       }
-      else if (mutt_str_strcmp(MuttVars[idx].name, "debug_level") == 0 && debuglevel_cmdline)
-      {
-        mutt_message(_(
-            "set debug_level ignored, it has been overridden by the cmdline"));
-        break;
-      }
+
+      if (mutt_str_strcmp(MuttVars[idx].name, "debug_level") == 0)
+        mutt_log_set_level(val);
       else
         *ptr = val;
 
@@ -2689,12 +2614,6 @@ static int parse_set(struct Buffer *tmp, struct Buffer *s, unsigned long data,
         if (*ptr < 0)
           *ptr = 0;
         mutt_hist_init();
-      }
-      else if (mutt_str_strcmp(MuttVars[idx].name, "debug_level") == 0)
-      {
-        if (*ptr < 0)
-          *ptr = 0;
-        restart_debug();
       }
       else if (mutt_str_strcmp(MuttVars[idx].name, "pager_index_lines") == 0)
       {
@@ -3752,7 +3671,7 @@ static int execute_commands(struct ListHead *p)
   {
     if (mutt_parse_rc_line(np->data, &token, &err) == -1)
     {
-      fprintf(stderr, _("Error in command line: %s\n"), err.data);
+      mutt_error(_("Error in command line: %s"), err.data);
       FREE(&token.data);
       FREE(&err.data);
 
@@ -3850,7 +3769,9 @@ void mutt_init(int skip_sys_rc, struct ListHead *commands)
     if (!HomeDir)
     {
       mutt_endwin();
-      fputs(_("unable to determine home directory"), stderr);
+      MuttLogger = log_disp_stderr;
+      mutt_error(_("unable to determine home directory"));
+      log_queue_flush(log_disp_stderr);
       exit(1);
     }
     p = mutt_str_getenv("USER");
@@ -3859,27 +3780,12 @@ void mutt_init(int skip_sys_rc, struct ListHead *commands)
     else
     {
       mutt_endwin();
-      fputs(_("unable to determine username"), stderr);
+      MuttLogger = log_disp_stderr;
+      mutt_error(_("unable to determine username"));
+      log_queue_flush(log_disp_stderr);
       exit(1);
     }
     Shell = mutt_str_strdup((p = mutt_str_getenv("SHELL")) ? p : "/bin/sh");
-  }
-
-  /* Start up debugging mode if requested from cmdline */
-  if (debuglevel_cmdline > 0)
-  {
-    debuglevel = debuglevel_cmdline;
-    if (debugfile_cmdline)
-    {
-      DebugFile = mutt_str_strdup(debugfile_cmdline);
-    }
-    else
-    {
-      int i = mutt_option_index("debug_file");
-      if ((i >= 0) && (MuttVars[i].initial != 0))
-        DebugFile = mutt_str_strdup((const char *) MuttVars[i].initial);
-    }
-    start_debug();
   }
 
   /* And about the host... */
@@ -4078,8 +3984,9 @@ void mutt_init(int skip_sys_rc, struct ListHead *commands)
       if (access(np->data, F_OK))
       {
         mutt_endwin();
-        snprintf(buffer, sizeof(buffer), "%s: %s", np->data, strerror(errno));
-        puts(buffer);
+        MuttLogger = log_disp_stderr;
+        mutt_perror(np->data);
+        log_queue_flush(log_disp_stderr);
         exit(1);
       }
     }
@@ -4118,8 +4025,7 @@ void mutt_init(int skip_sys_rc, struct ListHead *commands)
     {
       if (source_rc(buffer, &err) != 0)
       {
-        fputs(err.data, stderr);
-        fputc('\n', stderr);
+        mutt_error("%s", err.data);
         need_pause = 1;
       }
     }
@@ -4135,8 +4041,7 @@ void mutt_init(int skip_sys_rc, struct ListHead *commands)
         endwin();
       if (source_rc(np->data, &err) != 0)
       {
-        fputs(err.data, stderr);
-        fputc('\n', stderr);
+        mutt_error("%s", err.data);
         need_pause = 1;
       }
     }
@@ -4147,6 +4052,7 @@ void mutt_init(int skip_sys_rc, struct ListHead *commands)
 
   if (need_pause && !OPT_NO_CURSES)
   {
+    log_queue_flush(log_disp_stderr);
     if (mutt_any_key_to_continue(NULL) == -1)
       mutt_exit(1);
   }
@@ -4460,3 +4366,29 @@ int mutt_label_complete(char *buffer, size_t len, int numtabs)
 
   return 1;
 }
+
+bool set_default_value(const char *name, intptr_t value)
+{
+  if (!name)
+    return false;
+
+  int idx = mutt_option_index(name);
+  if (!idx)
+    return false;
+
+  MuttVars[idx].initial = value;
+  return true;
+}
+
+void reset_value(const char *name)
+{
+  if (!name)
+    return;
+
+  int idx = mutt_option_index(name);
+  if (!idx)
+    return;
+
+  restore_default(&MuttVars[idx]);
+}
+

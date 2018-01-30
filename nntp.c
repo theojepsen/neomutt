@@ -38,6 +38,7 @@
 #include "envelope.h"
 #include "globals.h"
 #include "header.h"
+#include "mutt_logging.h"
 #include "mailbox.h"
 #include "mutt_account.h"
 #include "mutt_curses.h"
@@ -404,7 +405,7 @@ static int nntp_auth(struct NntpServer *nserv)
         /* username accepted, sending password */
         if (mutt_str_strncmp("381", buf, 3) == 0)
         {
-          if (debuglevel < MUTT_SOCK_LOG_FULL)
+          if (DebugLevel < MUTT_SOCK_LOG_FULL)
             mutt_debug(MUTT_SOCK_LOG_CMD, "%d> AUTHINFO PASS *\n", conn->fd);
           snprintf(buf, sizeof(buf), "AUTHINFO PASS %s\r\n", conn->account.pass);
           if (mutt_socket_write_d(conn, buf, -1, MUTT_SOCK_LOG_FULL) < 0 ||
@@ -464,7 +465,7 @@ static int nntp_auth(struct NntpServer *nserv)
           /* send out client response */
           if (client_len)
           {
-            if (debuglevel >= MUTT_SOCK_LOG_FULL)
+            if (DebugLevel >= MUTT_SOCK_LOG_FULL)
             {
               char tmp[LONG_STRING];
               memcpy(tmp, client_out, client_len);
@@ -489,7 +490,7 @@ static int nntp_auth(struct NntpServer *nserv)
           }
 
           mutt_str_strcat(buf, sizeof(buf), "\r\n");
-          if (debuglevel < MUTT_SOCK_LOG_FULL)
+          if (DebugLevel < MUTT_SOCK_LOG_FULL)
           {
             if (strchr(buf, ' '))
               mutt_debug(MUTT_SOCK_LOG_CMD, "%d> AUTHINFO SASL %s%s\n",
@@ -506,11 +507,11 @@ static int nntp_auth(struct NntpServer *nserv)
           if ((mutt_str_strncmp(inbuf, "283 ", 4) != 0) &&
               (mutt_str_strncmp(inbuf, "383 ", 4) != 0))
           {
-            if (debuglevel < MUTT_SOCK_LOG_FULL)
+            if (DebugLevel < MUTT_SOCK_LOG_FULL)
               mutt_debug(MUTT_SOCK_LOG_CMD, "%d< %s\n", conn->fd, inbuf);
             break;
           }
-          if (debuglevel < MUTT_SOCK_LOG_FULL)
+          if (DebugLevel < MUTT_SOCK_LOG_FULL)
           {
             inbuf[3] = '\0';
             mutt_debug(MUTT_SOCK_LOG_CMD, "%d< %s sasl_data\n", conn->fd, inbuf);
@@ -524,7 +525,7 @@ static int nntp_auth(struct NntpServer *nserv)
             mutt_debug(1, "error base64-decoding server response.\n");
             break;
           }
-          else if (debuglevel >= MUTT_SOCK_LOG_FULL)
+          else if (DebugLevel >= MUTT_SOCK_LOG_FULL)
           {
             char tmp[LONG_STRING];
             memcpy(tmp, buf, len);

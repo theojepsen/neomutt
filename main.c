@@ -47,7 +47,9 @@
 #include "keymap.h"
 #include "mailbox.h"
 #include "mutt_curses.h"
+#include "mutt_logging.h"
 #include "mutt_menu.h"
+#include "myvar.h"
 #include "ncrypt/ncrypt.h"
 #include "options.h"
 #include "protos.h"
@@ -144,7 +146,9 @@ static void start_curses(void)
 #endif
   if (!initscr())
   {
-    puts(_("Error initializing terminal."));
+    MuttLogger = log_disp_stderr;
+    mutt_error(_("Error initializing terminal."));
+    log_queue_flush(log_disp_stderr);
     exit(1);
   }
   /* slang requires the signal handlers to be set after initializing */
@@ -205,9 +209,10 @@ int main(int argc, char **argv, char **env)
   extern char *optarg;
   extern int optind;
   int double_dash = argc, nargc = 1;
+  bool dlevel = false;
+  bool dfile = false;
 
   /* sanity check against stupid administrators */
-
   if (getegid() != getgid())
   {
     fprintf(stderr, "%s: I don't want to run with privileges!\n", argv[0]);
@@ -228,8 +233,9 @@ int main(int argc, char **argv, char **env)
   }
 #endif
 
-  mutt_message = mutt_error; /* send messages to stderr, too */
-  mutt_perror = mutt_perror_debug;
+  /* Until we know where to log, queue the messages */
+  MuttLogger = log_disp_queue;
+
   (void) mutt_rand32();
   umask(077);
 
@@ -311,12 +317,15 @@ int main(int argc, char **argv, char **env)
           break;
 
         case 'd':
-          if (mutt_str_atoi(optarg, &debuglevel_cmdline) < 0 || debuglevel_cmdline <= 0)
+          if ((mutt_str_atos(optarg, &DebugLevel) < 0) ||
+              (DebugLevel < LL_DEBUG1) || (DebugLevel > LL_DEBUG5))
           {
-            fprintf(stderr, _("Error: value '%s' is invalid for -d.\n"), optarg);
+            mutt_error(_("Error: value '%s' is invalid for -d."), optarg);
+            log_queue_flush(log_disp_stderr);
             return 1;
           }
-          printf(_("Debugging at level %d.\n"), debuglevel_cmdline);
+          set_default_value("debug_level", (intptr_t) DebugLevel);
+          dlevel = true;
           break;
 
         case 'E':
@@ -336,8 +345,9 @@ int main(int argc, char **argv, char **env)
           break;
 
         case 'l':
-          debugfile_cmdline = optarg;
-          printf(_("Debugging at file %s.\n"), debugfile_cmdline);
+          mutt_str_replace(&DebugFile, optarg);
+          set_default_value("debug_file", (intptr_t) mutt_str_strdup(DebugFile));
+          dfile = true;
           break;
 
         case 'm':
@@ -389,7 +399,7 @@ int main(int argc, char **argv, char **env)
           snprintf(buf, sizeof(buf), "set news_server=%s", optarg);
           mutt_list_insert_tail(&commands, mutt_str_strdup(buf));
         }
-        /* fallthrough */
+          /* fallthrough */
 
         case 'G': /* List of newsgroups */
           flags |= MUTT_SELECT | MUTT_NEWS;
@@ -416,16 +426,14 @@ int main(int argc, char **argv, char **env)
   optind = 1;
   argc = nargc;
 
-  switch (version)
+  if (version > 0)
   {
-    case 0:
-      break;
-    case 1:
+    log_queue_flush(log_disp_stderr);
+    if (version == 1)
       print_version();
-      exit(0);
-    default:
+    else
       print_copyright();
-      exit(0);
+    exit(0);
   }
 
   /* Check for a batch send. */
@@ -434,6 +442,9 @@ int main(int argc, char **argv, char **env)
   {
     OPT_NO_CURSES = true;
     sendflags = SENDBATCH;
+    /* We're not starting neomutt, so log to the screen */
+    MuttLogger = log_disp_stderr;
+    log_queue_flush(log_disp_stderr);
   }
 
   /* Always create the mutt_windows because batch mode has some shared code
@@ -454,6 +465,12 @@ int main(int argc, char **argv, char **env)
   mutt_init(flags & MUTT_NOSYSRC, &commands);
   mutt_list_free(&commands);
 
+  if (dlevel)
+    reset_value("debug_level");
+  if (dfile)
+    reset_value("debug_file");
+  mutt_log_start();
+
   /* Initialize crypto backends.  */
   crypt_init();
 
@@ -466,8 +483,11 @@ int main(int argc, char **argv, char **env)
       mutt_list_insert_tail(&queries, mutt_str_strdup(argv[optind]));
     return mutt_query_variables(&queries);
   }
+
   if (dump_variables)
+  {
     return mutt_dump_variables(hide_sensitive);
+  }
 
   if (!STAILQ_EMPTY(&alias_queries))
   {
@@ -499,8 +519,9 @@ int main(int argc, char **argv, char **env)
   {
     NORMAL_COLOR;
     clear();
-    mutt_error = mutt_curses_error;
-    mutt_message = mutt_curses_message;
+    MuttLogger = log_disp_curses;
+    log_queue_flush(log_disp_curses);
+    log_queue_set_max_size(100);
   }
 
   /* Create the Folder directory if it doesn't exist. */
@@ -568,7 +589,9 @@ int main(int argc, char **argv, char **env)
         if (url_parse_mailto(msg->env, &bodytext, argv[i]) < 0)
         {
           mutt_endwin();
-          fputs(_("Failed to parse mailto: link\n"), stderr);
+          MuttLogger = log_disp_stderr;
+          mutt_error(_("Failed to parse mailto: link"));
+          log_queue_flush(log_disp_stderr);
           exit(1);
         }
       }
@@ -754,7 +777,9 @@ int main(int argc, char **argv, char **env)
         if (!a)
         {
           mutt_endwin();
-          fprintf(stderr, _("%s: unable to attach file.\n"), np->data);
+          MuttLogger = log_disp_stderr;
+          mutt_error(_("%s: unable to attach file."), np->data);
+          log_queue_flush(log_disp_stderr);
           mutt_list_free(&attach);
           exit(1);
         }
@@ -832,7 +857,9 @@ int main(int argc, char **argv, char **env)
       if (!mutt_buffy_check(false))
       {
         mutt_endwin();
-        puts(_("No mailbox with new mail."));
+        MuttLogger = log_disp_stderr;
+        mutt_error(_("No mailbox with new mail."));
+        log_queue_flush(log_disp_stderr);
         exit(1);
       }
       folder[0] = 0;
@@ -857,7 +884,9 @@ int main(int argc, char **argv, char **env)
           if (!Incoming)
       {
         mutt_endwin();
-        puts(_("No incoming mailboxes defined."));
+        MuttLogger = log_disp_stderr;
+        mutt_error(_("No incoming mailboxes defined."));
+        log_queue_flush(log_disp_stderr);
         exit(1);
       }
       folder[0] = 0;
@@ -898,11 +927,15 @@ int main(int argc, char **argv, char **env)
       {
         case -1:
           mutt_endwin();
-          puts(strerror(errno));
+          MuttLogger = log_disp_stderr;
+          mutt_perror("");
+          log_queue_flush(log_disp_stderr);
           exit(1);
         case 1:
           mutt_endwin();
-          puts(_("Mailbox is empty."));
+          MuttLogger = log_disp_stderr;
+          mutt_error(_("Mailbox is empty."));
+          log_queue_flush(log_disp_stderr);
           exit(1);
       }
     }
@@ -932,6 +965,7 @@ int main(int argc, char **argv, char **env)
     mutt_endwin();
     puts(ErrorBuf);
   }
+  mutt_log_stop();
 
   exit(0);
 }

@@ -366,4 +366,7 @@ bool message_is_visible(struct Context *ctx, int index);
 int mutt_addrlist_to_intl(struct Address *a, char **err);
 int mutt_addrlist_to_local(struct Address *a);
 
+bool set_default_value(const char *name, intptr_t value);
+void reset_value(const char *name);
+
 #endif /* _MUTT_PROTOS_H */

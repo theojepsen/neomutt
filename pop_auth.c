@@ -29,6 +29,7 @@
 #include "mutt.h"
 #include "address.h"
 #include "globals.h"
+#include "mutt_logging.h"
 #include "mutt_account.h"
 #include "mutt_socket.h"
 #include "options.h"
@@ -292,7 +293,7 @@ static enum PopAuthRes pop_auth_user(struct PopData *pop_data, const char *metho
     snprintf(buf, sizeof(buf), "PASS %s\r\n", pop_data->conn->account.pass);
     ret = pop_query_d(pop_data, buf, sizeof(buf),
                       /* don't print the password unless we're at the ungodly debugging level */
-                      debuglevel < MUTT_SOCK_LOG_FULL ? "PASS *\r\n" : NULL);
+                      DebugLevel < MUTT_SOCK_LOG_FULL ? "PASS *\r\n" : NULL);
   }
 
   switch (ret)

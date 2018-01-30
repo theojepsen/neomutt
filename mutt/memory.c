@@ -40,6 +40,7 @@
 #include <stdint.h>
 #include <stdlib.h>
 #include <unistd.h>
+#include "logging.h"
 #include "memory.h"
 #include "exit.h"
 #include "message.h"

@@ -84,50 +84,6 @@ struct MuttWindow *MuttMessageWindow = NULL;
 struct MuttWindow *MuttSidebarWindow = NULL;
 #endif
 
-struct timeval LastError = { 0 };
-
-/**
- * micro_elapsed - Number of microseconds between two timevals
- * @param begin Begin time
- * @param end   End time
- * @retval num      Microseconds elapsed
- * @retval LONG_MAX Begin time was zero
- */
-static long micro_elapsed(const struct timeval *begin, const struct timeval *end)
-{
-  if ((begin->tv_sec == 0) && (end->tv_sec != 0))
-    return LONG_MAX;
-
-  return ((end->tv_sec - begin->tv_sec) * 1000000) + (end->tv_usec - begin->tv_usec);
-}
-
-/**
- * error_pause - Wait for an error message to be read
- *
- * If a second hasn't elapsed since LastError, then wait.
- */
-static void error_pause(void)
-{
-  struct timeval now = { 0 };
-
-  if (gettimeofday(&now, NULL) < 0)
-  {
-    mutt_debug(1, "gettimeofday failed: %d\n", errno);
-    return;
-  }
-
-  long micro = micro_elapsed(&LastError, &now);
-  if (micro >= 1000000)
-    return;
-
-  struct timespec wait = { 0 };
-  wait.tv_nsec = 1000000000 - (micro * 10);
-
-  mutt_refresh();
-  nanosleep(&wait, NULL);
-}
-
-
 static void reflow_message_window_rows(int mw_rows);
 
 void mutt_refresh(void)
@@ -255,17 +211,6 @@ int mutt_get_field_unbuffered(char *msg, char *buf, size_t buflen, int flags)
   OPT_IGNORE_MACRO_EVENTS = false;
 
   return rc;
-}
-
-void mutt_clear_error(void)
-{
-  /* Make sure the error message has had time to be read */
-  if (OPT_MSG_ERR)
-    error_pause();
-
-  ErrorBuf[0] = 0;
-  if (!OPT_NO_CURSES)
-    mutt_window_clearline(MuttMessageWindow, 0);
 }
 
 void mutt_edit_file(const char *editor, const char *data)
@@ -437,62 +382,6 @@ void mutt_query_exit(void)
   mutt_clear_error();
   mutt_curs_set(-1);
   SigInt = 0;
-}
-
-static void curses_message(int error, const char *fmt, va_list ap)
-{
-  char scratch[LONG_STRING];
-
-  vsnprintf(scratch, sizeof(scratch), fmt, ap);
-
-  /* Only pause if this is a message following an error */
-  if (!error && OPT_MSG_ERR)
-    error_pause();
-
-  mutt_debug(1, "%s\n", scratch);
-  mutt_simple_format(ErrorBuf, sizeof(ErrorBuf), 0, MuttMessageWindow->cols,
-                     FMT_LEFT, 0, scratch, sizeof(scratch), 0);
-
-  if (!OPT_KEEP_QUIET)
-  {
-    if (error)
-      BEEP();
-    SETCOLOR(error ? MT_COLOR_ERROR : MT_COLOR_MESSAGE);
-    mutt_window_mvaddstr(MuttMessageWindow, 0, 0, ErrorBuf);
-    NORMAL_COLOR;
-    mutt_window_clrtoeol(MuttMessageWindow);
-    mutt_refresh();
-  }
-
-  if (error)
-  {
-    OPT_MSG_ERR = true;
-    if (gettimeofday(&LastError, NULL) < 0)
-      mutt_debug(1, "gettimeofday failed: %d\n", errno);
-  }
-  else
-  {
-    OPT_MSG_ERR = false;
-    LastError.tv_sec = 0;
-  }
-}
-
-void mutt_curses_error(const char *fmt, ...)
-{
-  va_list ap;
-
-  va_start(ap, fmt);
-  curses_message(1, fmt, ap);
-  va_end(ap);
-}
-
-void mutt_curses_message(const char *fmt, ...)
-{
-  va_list ap;
-
-  va_start(ap, fmt);
-  curses_message(0, fmt, ap);
-  va_end(ap);
 }
 
 void mutt_progress_init(struct Progress *progress, const char *msg,
