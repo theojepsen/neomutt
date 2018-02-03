@@ -5,14 +5,16 @@ TEST_OBJS   = test/main.o \
 	      test/string.o \
 	      test/muttlib.o
 
+TEST_NEOMUTTOBJS = $(filter-out main.o, $(NEOMUTTOBJS))
+
 TEST_BINARY = test/neomutt-test$(EXEEXT)
 
 .PHONY: test
 test: $(TEST_BINARY)
 	$(TEST_BINARY)
 
-$(TEST_BINARY): $(TEST_OBJS) $(MUTTLIBS)
-	$(CC) -o $@ $(TEST_OBJS) $(filter-out main.o, $(NEOMUTTOBJS)) \
+$(TEST_BINARY): $(TEST_OBJS) $(MUTTLIBS) $(TEST_NEOMUTTOBJS)
+	$(CC) -o $@ $(TEST_OBJS) $(TEST_NEOMUTTOBJS) \
 	$(MUTTLIBS) $(LDFLAGS) $(LIBS)
 
 all-test: $(TEST_BINARY)
