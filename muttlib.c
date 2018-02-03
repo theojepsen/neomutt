@@ -1525,7 +1525,7 @@ size_t mutt_realpath(char *buf, bool rsym)
       }
       *q = 0;
     }
-    if (strstr(p, "..") && (scheme == U_UNKNOWN || scheme == U_FILE) && realpath(p, tmp))
+    if (strstr(p, "..") && realpath(p, tmp))
       mutt_str_strfcpy(p, tmp, buflen - (p - s));
 
     return strlen(s);
