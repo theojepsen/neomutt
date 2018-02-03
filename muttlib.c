@@ -1474,6 +1474,7 @@ size_t mutt_realpath(char *buf, bool rsym)
     return mutt_str_strfcpy(buf, NONULL(realpath(buf, s)), PATH_MAX);
   else
   {
+    const size_t MUTT_PATH_MAX_DEPTH = 100;
     // wrapper
     size_t buflen = PATH_MAX;
     char *s = buf;
@@ -1520,10 +1521,109 @@ size_t mutt_realpath(char *buf, bool rsym)
       }
       *q = 0;
     }
-    if (strstr(p, "..") && realpath(p, tmp))
-      mutt_str_strfcpy(p, tmp, buflen - (p - s));
+    /* Fix any combo of parent paths. This works by tracking the directory
+     * levels via sub-pointers pointing to original portions of the input path.
+     * These pointers are updated as the levels change by parent paths
+     * being encountered. I believe the code explains it simpler.
+     */
+    // only do all this if we know there is at least one parent
+    if (strstr(p, ".."))
+    {
+      // The directory level tracker (array of pointers)
+      char *level[MUTT_PATH_MAX_DEPTH];
+      // a buffer that the final dir levels will be copied to
+      char tmp[PATH_MAX];
+      /* The following loop works such that if a parent is encountered, then the
+       * current level (n) is reduced so that the next path component
+       * will replace the previous one. But when normal path components
+       * are encountered, the level is incremented. This creates a
+       * mismatch in level depending on which is the last codepath taken.
+       * If the parent is taken last, the level will be one lower than
+       * "current" level. If a normal path component is the last
+       * encountered, then the level would be one higher than "current"
+       * So we need to bring it back up after the loop exits in
+       * that case.
+       */
+      bool parent_last = false;
+      char blank_abs[] = "//", blank_rel[] = " /";
+      char *r = p;  // iterator
+      size_t n = 0; // current level
 
-    return strlen(s);
+      // make sure we have unused null ptrs
+      memset(level, 0, sizeof(char *) * MUTT_PATH_MAX_DEPTH);
+
+      //printf ("Parsing...\n");
+      while ((r = strchr(&r[0], '/')))
+      {
+        //printf ("%s\n", p);
+        if (r[1] == '\0') // this was a trailing slash, string over
+          break;
+        if ((r[1] == '.') && (r[2] == '.'))
+        {
+          //n--; // decrease dir level -- next path will go to this level
+          if (n) n--;
+          //printf("found parent, level[%d] = '//', --n", n);
+          if (n == 0)
+            level[n] = p[0] == '/' ? blank_abs : blank_rel;
+          else
+            level[n] = blank_abs;
+
+          parent_last = true;
+        }
+        else
+        {
+          //printf("n = %d, n++\n", n);
+          level[n] = &r[0];
+          if (n < MUTT_PATH_MAX_DEPTH)
+            n++;
+
+          parent_last = false;
+        }
+        r++;
+      }
+      // iterator of tmp
+      r = tmp;
+      //printf ("Iterating... n = %d\n", n);
+
+      if (parent_last)
+        n++;
+
+      for (int i=0; i < n; i++)
+      {
+        //printf ("level[i] = %s\n", level[i]);
+        //printf ("strchar() = %s\n", strchr(&level[i][1], '/'));
+        // extract string as follows
+        char *slash_ptr = strchr(&level[i][1], '/');
+        size_t slash_loc = 0;
+        if (slash_ptr)
+          slash_loc = (slash_ptr - level[i]);
+        //printf("slash_loc: %d, \n", slash_loc);
+        if (slash_loc)
+          level[i][slash_loc] = '\0';
+        //printf("%d: %s\n", i, level[i]);
+        strcpy(r, level[i]);
+        r += strlen(level[i]);
+        if (slash_loc)
+          level[i][slash_loc] = '/';
+      }
+
+      //printf("FINAL: %s\n\n", tmp);
+      strcpy(buf,tmp);
+
+    }
+    /* Let's cut off the trailing / if it exists and we're not at the root
+     * Note: doing this because the browser GUI is a lil' buggy and if it
+     * sees a path '/a/b/' going to the parent only changes it to '/a/b',
+     * causing the user to have press '..' twice. Honestly, this should be
+     * fixed in the browser but I don't mind removing trailing slashes
+     * from all paths that come through this (non-symlinking) code-path.
+     */
+    len = strlen(buf);
+    if (len != 1 && buf[len - 1] == '/')
+    {
+      buf[--len] = '\0';
+    }
+    return len;
   }
 }
 
