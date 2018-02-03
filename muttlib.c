@@ -1506,24 +1506,25 @@ size_t mutt_realpath(char *buf, bool rsym)
       /* first attempt to collapse the pathname, this is more
        * lightweight than realpath() and doesn't resolve links
        */
-      while (*p)
+      char *r = p;
+      while (*r)
       {
-        if (*p == '/' && p[1] == '/')
+        if (*r == '/' && r[1] == '/')
         {
           *q++ = '/';
-          p += 2;
+          r += 2;
         }
-        else if (p[0] == '/' && p[1] == '.' && p[2] == '/')
+        else if (r[0] == '/' && r[1] == '.' && r[2] == '/')
         {
           *q++ = '/';
-          p += 3;
+          r += 3;
         }
         else
-          *q++ = *p++;
+          *q++ = *r++;
       }
       *q = 0;
     }
-    else if (strstr(p, "..") && (scheme == U_UNKNOWN || scheme == U_FILE) && realpath(p, tmp))
+    if (strstr(p, "..") && (scheme == U_UNKNOWN || scheme == U_FILE) && realpath(p, tmp))
       mutt_str_strfcpy(p, tmp, buflen - (p - s));
 
     return strlen(s);
