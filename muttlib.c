@@ -1523,15 +1523,11 @@ size_t mutt_realpath(char *buf, bool rsym)
     /* Fix any combo of parent paths. This works by tracking the directory
      * levels via sub-pointers pointing to original portions of the input path.
      * These pointers are updated as the levels change by parent paths
-     * being encountered. I believe the code explains it simpler.
      */
-    // only do all this if we know there is at least one parent
     if (strstr(p, ".."))
     {
       // The directory level tracker (array of pointers)
       char *level[MUTT_PATH_MAX_DEPTH];
-      // a buffer that the final dir levels will be copied to
-      char tmp[PATH_MAX];
       /* The following loop works such that if a parent is encountered, then the
        * current level (n) is reduced so that the next path component
        * will replace the previous one. But when normal path components
@@ -1544,35 +1540,23 @@ size_t mutt_realpath(char *buf, bool rsym)
        * that case.
        */
       bool parent_last = false;
-      char blank_abs[] = "//", blank_rel[] = " /";
+      /* */
       char *r = p;  // iterator
       size_t n = 0; // current level
 
-      // make sure we have unused null ptrs
-      memset(level, 0, sizeof(char *) * MUTT_PATH_MAX_DEPTH);
-
-      //printf ("Parsing...\n");
-      while ((r = strchr(&r[0], '/')))
+      while ((r = strchr(r, '/')) && (r[1] != '\0'))
       {
-        //printf ("%s\n", p);
-        if (r[1] == '\0') // this was a trailing slash, string over
-          break;
-        if ((r[1] == '.') && (r[2] == '.'))
+        if ((r[1] == '.') && (r[2] == '.') && ((r[3] == '/') || (r[3] == '\0')))
         {
-          //n--; // decrease dir level -- next path will go to this level
-          if (n) n--;
-          //printf("found parent, level[%d] = '//', --n", n);
-          if (n == 0)
-            level[n] = p[0] == '/' ? blank_abs : blank_rel;
-          else
-            level[n] = blank_abs;
+          // decrease dir level -- next path will go to this level
+          if (n > 0)
+            n--;
 
           parent_last = true;
         }
         else
         {
-          //printf("n = %d, n++\n", n);
-          level[n] = &r[0];
+          level[n] = r;
           if (n < MUTT_PATH_MAX_DEPTH)
             n++;
 
@@ -1580,35 +1564,24 @@ size_t mutt_realpath(char *buf, bool rsym)
         }
         r++;
       }
-      // iterator of tmp
-      r = tmp;
-      //printf ("Iterating... n = %d\n", n);
 
-      if (parent_last)
-        n++;
+      r = p;  // iterator at path portion of buf (eg if URL)
 
-      for (int i=0; i < n; i++)
+      if (parent_last && (n == 0))
       {
-        //printf ("level[i] = %s\n", level[i]);
-        //printf ("strchar() = %s\n", strchr(&level[i][1], '/'));
-        // extract string as follows
-        char *slash_ptr = strchr(&level[i][1], '/');
-        size_t slash_loc = 0;
-        if (slash_ptr)
-          slash_loc = (slash_ptr - level[i]);
-        //printf("slash_loc: %d, \n", slash_loc);
-        if (slash_loc)
-          level[i][slash_loc] = '\0';
-        //printf("%d: %s\n", i, level[i]);
-        strcpy(r, level[i]);
-        r += strlen(level[i]);
-        if (slash_loc)
-          level[i][slash_loc] = '/';
+        *r = '/';
+        r[1] = '\0';
       }
-
-      //printf("FINAL: %s\n\n", tmp);
-      strcpy(buf,tmp);
-
+      else
+      {
+        for (int i = 0; i < n; i++)
+        {
+          *(r++) = level[i][0]; // grab first character ('/')
+          for (char *j = &level[i][1]; *j != '/' && *j != '\0'; j++)
+            *(r++) = *j;
+        }
+        *r = '\0';
+      }
     }
     /* Let's cut off the trailing / if it exists and we're not at the root
      * Note: doing this because the browser GUI is a lil' buggy and if it
@@ -1618,10 +1591,9 @@ size_t mutt_realpath(char *buf, bool rsym)
      * from all paths that come through this (non-symlinking) code-path.
      */
     len = strlen(buf);
-    if (len != 1 && buf[len - 1] == '/')
-    {
+    if ((buf[len - 1] == '/') && (len > 1))
       buf[--len] = '\0';
-    }
+
     return len;
   }
 }
