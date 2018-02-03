@@ -490,10 +490,8 @@ void mutt_mktemp_full(char *s, size_t slen, const char *prefix,
  */
 void mutt_pretty_mailbox(char *s, size_t buflen)
 {
-  char *p = s, *q = s;
-  size_t len;
   enum UrlScheme scheme;
-  char tmp[PATH_MAX];
+  size_t len;
 
   scheme = url_check_scheme(s);
 
@@ -510,44 +508,17 @@ void mutt_pretty_mailbox(char *s, size_t buflen)
     return;
 #endif
 
-  /* if s is an url, only collapse path component */
-  if (scheme != U_UNKNOWN)
-  {
-    p = strchr(s, ':') + 1;
-    if (strncmp(p, "//", 2) == 0)
-      q = strchr(p + 2, '/');
-    if (!q)
-      q = strchr(p, '\0');
-    p = q;
-  }
+  /* the non-symlink realpath impl that was here has been moved to the
+   * non-symlinking branch in mutt_realpath()
+   */
+  mutt_realpath(s, false);
 
-  /* cleanup path */
-  if (strstr(p, "//") || strstr(p, "/./"))
-  {
-    /* first attempt to collapse the pathname, this is more
-     * lightweight than realpath() and doesn't resolve links
-     */
-    while (*p)
-    {
-      if (*p == '/' && p[1] == '/')
-      {
-        *q++ = '/';
-        p += 2;
-      }
-      else if (p[0] == '/' && p[1] == '.' && p[2] == '/')
-      {
-        *q++ = '/';
-        p += 3;
-      }
-      else
-        *q++ = *p++;
-    }
-    *q = 0;
-  }
-  else if (strstr(p, "..") && (scheme == U_UNKNOWN || scheme == U_FILE) && realpath(p, tmp))
-    mutt_str_strfcpy(p, tmp, buflen - (p - s));
-
+  /* Collapse pathname using ~ or = if possible. These are illegal for
+   * local filesystem calls so they are not migrated to
+   * mutt_realpath()
+   */
   len = mutt_str_strlen(Folder);
+
   if ((mutt_str_strncmp(s, Folder, len) == 0) && s[len] == '/')
   {
     *s++ = '=';
@@ -1486,6 +1457,7 @@ void mutt_get_parent_path(char *output, char *path, size_t olen)
 /**
  * mutt_realpath - resolve path, unraveling symlinks
  * @param buf Buffer containing path
+ * @param rsym Boolean specifying whether to resolve symlinks
  * @retval len String length of resolved path
  * @retval 0   Error, buf is not overwritten
  *
@@ -1493,14 +1465,69 @@ void mutt_get_parent_path(char *output, char *path, size_t olen)
  *
  * @note Size of buf should be at least PATH_MAX bytes.
  */
-size_t mutt_realpath(char *buf)
+size_t mutt_realpath(char *buf, bool rsym)
 {
   char s[PATH_MAX];
 
-  if (realpath(buf, s) == NULL)
-    return 0;
+  if (rsym)
+  {
+    if (realpath(buf, s) == NULL)
+      return 0;
 
-  return mutt_str_strfcpy(buf, s, PATH_MAX);
+    return mutt_str_strfcpy(buf, s, PATH_MAX);
+  }
+  else
+  {
+    // wrapper
+    size_t buflen = PATH_MAX;
+    char *s = buf;
+    //
+    char *p = s, *q = s;
+    size_t len;
+    enum UrlScheme scheme;
+    char tmp[PATH_MAX];
+
+    scheme = url_check_scheme(buf);
+
+    /* if s is an url, only collapse path component */
+    if (scheme != U_UNKNOWN)
+    {
+      p = strchr(s, ':') + 1;
+      if (strncmp(p, "//", 2) == 0)
+        q = strchr(p + 2, '/');
+      if (!q)
+        q = strchr(p, '\0');
+      p = q;
+    }
+
+    /* cleanup path */
+    if (strstr(p, "//") || strstr(p, "/./"))
+    {
+      /* first attempt to collapse the pathname, this is more
+       * lightweight than realpath() and doesn't resolve links
+       */
+      while (*p)
+      {
+        if (*p == '/' && p[1] == '/')
+        {
+          *q++ = '/';
+          p += 2;
+        }
+        else if (p[0] == '/' && p[1] == '.' && p[2] == '/')
+        {
+          *q++ = '/';
+          p += 3;
+        }
+        else
+          *q++ = *p++;
+      }
+      *q = 0;
+    }
+    else if (strstr(p, "..") && (scheme == U_UNKNOWN || scheme == U_FILE) && realpath(p, tmp))
+      mutt_str_strfcpy(p, tmp, buflen - (p - s));
+
+    return strlen(s);
+  }
 }
 
 char debugfilename[_POSIX_PATH_MAX];
