@@ -2,7 +2,8 @@ TEST_OBJS   = test/main.o \
 	      test/base64.o \
 	      test/rfc2047.o \
 	      test/md5.o \
-	      test/string.o
+	      test/string.o \
+	      test/muttlib.o
 
 TEST_BINARY = test/neomutt-test$(EXEEXT)
 
@@ -11,7 +12,8 @@ test: $(TEST_BINARY)
 	$(TEST_BINARY)
 
 $(TEST_BINARY): $(TEST_OBJS) $(MUTTLIBS)
-	$(CC) -o $@ $(TEST_OBJS) $(MUTTLIBS) $(LDFLAGS) $(LIBS)
+	$(CC) -o $@ $(TEST_OBJS) $(filter-out main.o, $(NEOMUTTOBJS)) \
+	$(MUTTLIBS) $(LDFLAGS) $(LIBS)
 
 all-test: $(TEST_BINARY)
 
