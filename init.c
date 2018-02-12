@@ -1498,7 +1498,7 @@ static int parse_attachments(struct Buffer *buf, struct Buffer *s,
 
   if (op == '?')
   {
-    mutt_endwin(NULL);
+    mutt_endwin();
     fflush(stdout);
     printf(_("\nCurrent attachments settings:\n\n"));
     print_attach_list(&AttachAllow, '+', "A");
@@ -2216,7 +2216,7 @@ static int parse_setenv(struct Buffer *tmp, struct Buffer *s,
       {
         if (!found)
         {
-          mutt_endwin(NULL);
+          mutt_endwin();
           found = 1;
         }
         puts(*envp);
@@ -3849,7 +3849,7 @@ void mutt_init(int skip_sys_rc, struct ListHead *commands)
   {
     if (!HomeDir)
     {
-      mutt_endwin(NULL);
+      mutt_endwin();
       fputs(_("unable to determine home directory"), stderr);
       exit(1);
     }
@@ -3858,7 +3858,7 @@ void mutt_init(int skip_sys_rc, struct ListHead *commands)
       Username = mutt_str_strdup(p);
     else
     {
-      mutt_endwin(NULL);
+      mutt_endwin();
       fputs(_("unable to determine username"), stderr);
       exit(1);
     }
@@ -3891,7 +3891,7 @@ void mutt_init(int skip_sys_rc, struct ListHead *commands)
    */
   if ((uname(&utsname)) == -1)
   {
-    mutt_endwin(NULL);
+    mutt_endwin();
     perror(_("unable to determine nodename via uname()"));
     exit(1);
   }
@@ -4077,8 +4077,9 @@ void mutt_init(int skip_sys_rc, struct ListHead *commands)
       np->data = mutt_str_strdup(buffer);
       if (access(np->data, F_OK))
       {
+        mutt_endwin();
         snprintf(buffer, sizeof(buffer), "%s: %s", np->data, strerror(errno));
-        mutt_endwin(buffer);
+        puts(buffer);
         exit(1);
       }
     }

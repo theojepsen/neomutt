@@ -224,7 +224,7 @@ void mutt_edit_file(const char *editor, const char *data)
 {
   char cmd[LONG_STRING];
 
-  mutt_endwin(NULL);
+  mutt_endwin();
   mutt_expand_file_fmt(cmd, sizeof(cmd), editor, data);
   if (mutt_system(cmd) != 0)
   {
@@ -803,24 +803,17 @@ void mutt_show_error(void)
   mutt_window_clrtoeol(MuttMessageWindow);
 }
 
-void mutt_endwin(const char *msg)
+void mutt_endwin(void)
 {
+  if (OPT_NO_CURSES)
+    return;
+
   int e = errno;
 
-  if (!OPT_NO_CURSES)
-  {
-    /* at least in some situations (screen + xterm under SuSE11/12) endwin()
-     * doesn't properly flush the screen without an explicit call.
-     */
-    mutt_refresh();
-    endwin();
-  }
-
-  if (msg && *msg)
-  {
-    puts(msg);
-    fflush(stdout);
-  }
+  /* at least in some situations (screen + xterm under SuSE11/12) endwin()
+   * doesn't properly flush the screen without an explicit call.  */
+  mutt_refresh();
+  endwin();
 
   errno = e;
 }
@@ -873,7 +866,7 @@ int mutt_do_pager(const char *banner, const char *tempfile, int do_color, struct
   {
     char cmd[STRING];
 
-    mutt_endwin(NULL);
+    mutt_endwin();
     mutt_expand_file_fmt(cmd, sizeof(cmd), Pager, tempfile);
     if (mutt_system(cmd) == -1)
     {

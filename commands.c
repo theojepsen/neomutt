@@ -229,7 +229,7 @@ int mutt_display_message(struct Header *cur)
   {
     int r;
 
-    mutt_endwin(NULL);
+    mutt_endwin();
     snprintf(buf, sizeof(buf), "%s %s", NONULL(Pager), tempfile);
     r = mutt_system(buf);
     if (r == -1)
@@ -402,7 +402,7 @@ static int pipe_message(struct Header *h, char *cmd, int decode, int print,
       if (h->security & ENCRYPT && !crypt_valid_passphrase(h->security))
         return 1;
     }
-    mutt_endwin(NULL);
+    mutt_endwin();
 
     thepid = mutt_create_filter(cmd, &fpout, NULL, NULL);
     if (thepid < 0)
@@ -445,7 +445,7 @@ static int pipe_message(struct Header *h, char *cmd, int decode, int print,
           continue;
 
         mutt_message_hook(Context, Context->hdrs[i], MUTT_MESSAGEHOOK);
-        mutt_endwin(NULL);
+        mutt_endwin();
         thepid = mutt_create_filter(cmd, &fpout, NULL, NULL);
         if (thepid < 0)
         {
@@ -465,7 +465,7 @@ static int pipe_message(struct Header *h, char *cmd, int decode, int print,
     }
     else
     {
-      mutt_endwin(NULL);
+      mutt_endwin();
       thepid = mutt_create_filter(cmd, &fpout, NULL, NULL);
       if (thepid < 0)
       {
@@ -616,7 +616,7 @@ void mutt_shell_escape(void)
     if (buf[0])
     {
       mutt_window_clearline(MuttMessageWindow, 0);
-      mutt_endwin(NULL);
+      mutt_endwin();
       fflush(stdout);
       int rc = mutt_system(buf);
       if (rc == -1)
