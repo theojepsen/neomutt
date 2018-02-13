@@ -544,7 +544,6 @@ static bool create_hcache_dir(const char *path)
     return true;
 
   mutt_error(_("Can't create %s: %s."), dir, strerror(errno));
-  mutt_sleep(2);
   return false;
 }
 

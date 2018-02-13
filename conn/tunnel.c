@@ -161,7 +161,6 @@ static int tunnel_socket_close(struct Connection *conn)
   {
     mutt_error(_("Tunnel to %s returned error %d (%s)"), conn->account.host,
                WEXITSTATUS(status), NONULL(mutt_str_sysexit(WEXITSTATUS(status))));
-    mutt_sleep(2);
   }
   FREE(&conn->sockdata);
 
@@ -185,7 +184,6 @@ static int tunnel_socket_read(struct Connection *conn, char *buf, size_t len)
   if (rc == -1)
   {
     mutt_error(_("Tunnel error talking to %s: %s"), conn->account.host, strerror(errno));
-    mutt_sleep(1);
   }
 
   return rc;
@@ -208,7 +206,6 @@ static int tunnel_socket_write(struct Connection *conn, const char *buf, size_t 
   if (rc == -1)
   {
     mutt_error(_("Tunnel error talking to %s: %s"), conn->account.host, strerror(errno));
-    mutt_sleep(1);
   }
 
   return rc;

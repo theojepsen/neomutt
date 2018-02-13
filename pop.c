@@ -319,7 +319,6 @@ static int pop_fetch_headers(struct Context *ctx)
     if (deleted > 0)
     {
       mutt_error(_("%d messages have been lost. Try reopening the mailbox."), deleted);
-      mutt_sleep(2);
     }
 
     for (i = old_count; i < new_count; i++)
@@ -436,7 +435,6 @@ static int pop_open_mailbox(struct Context *ctx)
   if (pop_parse_path(ctx->path, &acct))
   {
     mutt_error(_("%s is an invalid POP path"), ctx->path);
-    mutt_sleep(2);
     return -1;
   }
 
@@ -578,7 +576,6 @@ static int pop_fetch_message(struct Context *ctx, struct Message *msg, int msgno
         return 0;
 
       mutt_perror(cache->path);
-      mutt_sleep(2);
       return -1;
     }
     else
@@ -599,7 +596,6 @@ static int pop_fetch_message(struct Context *ctx, struct Message *msg, int msgno
     {
       mutt_error(
           _("The message index is incorrect. Try reopening the mailbox."));
-      mutt_sleep(2);
       return -1;
     }
 
@@ -617,7 +613,6 @@ static int pop_fetch_message(struct Context *ctx, struct Message *msg, int msgno
       if (!msg->fp)
       {
         mutt_perror(path);
-        mutt_sleep(2);
         return -1;
       }
     }
@@ -639,14 +634,12 @@ static int pop_fetch_message(struct Context *ctx, struct Message *msg, int msgno
     if (ret == -2)
     {
       mutt_error("%s", pop_data->err_msg);
-      mutt_sleep(2);
       return -1;
     }
 
     if (ret == -3)
     {
       mutt_error(_("Can't write message to temporary file!"));
-      mutt_sleep(2);
       return -1;
     }
   }
@@ -775,7 +768,6 @@ static int pop_sync_mailbox(struct Context *ctx, int *index_hint)
     if (ret == -2)
     {
       mutt_error("%s", pop_data->err_msg);
-      mutt_sleep(2);
       return -1;
     }
   }

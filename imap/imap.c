@@ -127,8 +127,6 @@ static int check_capabilities(struct ImapData *idata)
   {
     mutt_error(
         _("This IMAP server is ancient. NeoMutt does not work with it."));
-    mutt_sleep(2); /* pause a moment to let the user see the error */
-
     return -1;
   }
 
@@ -1086,7 +1084,6 @@ int imap_open_connection(struct ImapData *idata)
           if (mutt_ssl_starttls(idata->conn))
           {
             mutt_error(_("Could not negotiate TLS connection"));
-            mutt_sleep(1);
             goto err_close_conn;
           }
           else
@@ -1102,7 +1099,6 @@ int imap_open_connection(struct ImapData *idata)
     if (SslForceTls && !idata->conn->ssf)
     {
       mutt_error(_("Encrypted connection unavailable"));
-      mutt_sleep(1);
       goto err_close_conn;
     }
 #endif
@@ -2174,7 +2170,6 @@ static int imap_open_mailbox(struct Context *ctx)
     s = imap_next_word(idata->buf); /* skip seq */
     s = imap_next_word(s);          /* Skip response */
     mutt_error("%s", s);
-    mutt_sleep(2);
     goto fail;
   }
 
@@ -2223,7 +2218,6 @@ static int imap_open_mailbox(struct Context *ctx)
   if (count && (imap_read_headers(idata, 1, count) < 0))
   {
     mutt_error(_("Error opening mailbox"));
-    mutt_sleep(1);
     goto fail;
   }
 
@@ -2439,7 +2433,6 @@ int imap_sync_mailbox(struct Context *ctx, int expunge)
     if (rc < 0)
     {
       mutt_error(_("Expunge failed"));
-      mutt_sleep(1);
       goto out;
     }
 
@@ -2663,7 +2656,6 @@ static int imap_edit_message_tags(struct Context *ctx, const char *tags, char *b
         *checker == 93)                     // ]
     {
       mutt_error(_("Invalid IMAP flags"));
-      mutt_sleep(2);
       return 0;
     }
 

@@ -467,7 +467,6 @@ static gpgme_ctx_t create_gpgme_context(int for_smime)
   if (err)
   {
     mutt_error(_("error creating gpgme context: %s\n"), gpgme_strerror(err));
-    sleep(2);
     mutt_exit(1);
   }
 
@@ -477,7 +476,6 @@ static gpgme_ctx_t create_gpgme_context(int for_smime)
     if (err)
     {
       mutt_error(_("error enabling CMS protocol: %s\n"), gpgme_strerror(err));
-      sleep(2);
       mutt_exit(1);
     }
   }
@@ -499,7 +497,6 @@ static gpgme_data_t create_gpgme_data(void)
   if (err)
   {
     mutt_error(_("error creating gpgme data object: %s\n"), gpgme_strerror(err));
-    sleep(2);
     mutt_exit(1);
   }
   return data;
@@ -842,7 +839,6 @@ static gpgme_error_t set_pka_sig_notation(gpgme_ctx_t ctx)
   if (err)
   {
     mutt_error(_("error setting PKA signature notation: %s\n"), gpgme_strerror(err));
-    mutt_sleep(2);
   }
 
   return err;
@@ -2399,14 +2395,12 @@ void pgp_gpgme_invoke_import(const char *fname)
   {
     mutt_file_fclose(&in);
     mutt_error(_("error allocating data object: %s\n"), gpgme_strerror(err));
-    mutt_sleep(1);
     return;
   }
 
   if (pgp_gpgme_extract_keys(keydata, &out, 0))
   {
     mutt_error(_("Error extracting key data!\n"));
-    mutt_sleep(1);
   }
   gpgme_data_release(keydata);
   mutt_file_fclose(&in);
@@ -2797,7 +2791,6 @@ int pgp_gpgme_encrypted_handler(struct Body *a, struct State *s)
   else
   {
     mutt_error(_("Could not decrypt PGP message"));
-    mutt_sleep(2);
     rc = -1;
   }
 
@@ -4212,7 +4205,6 @@ static struct CryptKeyInfo *crypt_select_key(struct CryptKeyInfo *keys,
   if (!i && unusable)
   {
     mutt_error(_("All matching keys are marked expired/revoked."));
-    mutt_sleep(1);
     return NULL;
   }
 
@@ -4619,7 +4611,6 @@ static struct CryptKeyInfo *crypt_ask_for_key(char *tag, char *whatfor, short ab
       return key;
 
     mutt_error(_("No matching keys found for \"%s\""), resp);
-    mutt_sleep(0);
   }
   /* not reached */
 }
@@ -4791,7 +4782,6 @@ struct Body *pgp_gpgme_make_key_attachment(char *tempf)
   if (err != GPG_ERR_NO_ERROR)
   {
     mutt_error(_("Error exporting key: %s\n"), gpgme_strerror(err));
-    mutt_sleep(1);
     goto bail;
   }
 

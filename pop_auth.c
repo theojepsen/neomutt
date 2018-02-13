@@ -187,7 +187,6 @@ bail:
 
   FREE(&buf);
   mutt_error(_("SASL authentication failed."));
-  mutt_sleep(2);
 
   return POP_A_FAILURE;
 }
@@ -225,7 +224,6 @@ static enum PopAuthRes pop_auth_apop(struct PopData *pop_data, const char *metho
   if (!mutt_addr_valid_msgid(pop_data->timestamp))
   {
     mutt_error(_("POP timestamp is invalid!"));
-    mutt_sleep(2);
     return POP_A_UNAVAIL;
   }
 
@@ -250,7 +248,6 @@ static enum PopAuthRes pop_auth_apop(struct PopData *pop_data, const char *metho
   }
 
   mutt_error(_("APOP authentication failed."));
-  mutt_sleep(2);
 
   return POP_A_FAILURE;
 }
@@ -307,7 +304,6 @@ static enum PopAuthRes pop_auth_user(struct PopData *pop_data, const char *metho
   }
 
   mutt_error("%s %s", _("Login failed."), pop_data->err_msg);
-  mutt_sleep(2);
 
   return POP_A_FAILURE;
 }
