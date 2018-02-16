@@ -508,14 +508,15 @@ void mutt_pretty_mailbox(char *s, size_t buflen)
     return;
 #endif
 
-  /* the non-symlink realpath impl that was here has been moved to the
-   * non-symlinking branch in mutt_realpath()
+  /* the non-symlink realpath impl that was here has been consolidated
+   * without URL parsing into the non-symlinking code-path of
+   * mutt_file_tidy_path()
    */
-  mutt_realpath(s, false);
+  mutt_file_tidy_path(s, false);
 
   /* Collapse pathname using ~ or = if possible. These are illegal for
    * local filesystem calls so they are not migrated to
-   * mutt_realpath()
+   * mutt_file_tidy_path()
    */
   len = mutt_str_strlen(Folder);
 
@@ -1451,136 +1452,6 @@ void mutt_get_parent_path(char *output, char *path, size_t olen)
       output[0] = '/';
       output[1] = '\0';
     }
-  }
-}
-
-/**
- * mutt_realpath - resolve path, unraveling symlinks
- * @param buf Buffer containing path
- * @param rsym Boolean specifying whether to resolve symlinks
- * @retval len String length of resolved path
- * @retval 0   Error, buf is not overwritten
- *
- * Resolve and overwrite the path in buf.
- *
- * @note Size of buf should be at least PATH_MAX bytes.
- */
-size_t mutt_realpath(char *buf, bool rsym)
-{
-  char s[PATH_MAX];
-
-  if (rsym)
-    return mutt_str_strfcpy(buf, NONULL(realpath(buf, s)), PATH_MAX);
-  else
-  {
-    const size_t MUTT_PATH_MAX_DEPTH = 100;
-    // wrapper
-    size_t buflen = PATH_MAX;
-    char *s = buf;
-    //
-    char *p = s, *q = s;
-    size_t len;
-    char tmp[PATH_MAX];
-
-    /* cleanup path */
-    if (strstr(p, "//") || strstr(p, "/./"))
-    {
-      /* first attempt to collapse the pathname, this is more
-       * lightweight than realpath() and doesn't resolve links
-       */
-      char *r = p;
-      while (*r)
-      {
-        if (*r == '/' && r[1] == '/')
-        {
-          *q++ = '/';
-          r += 2;
-        }
-        else if (r[0] == '/' && r[1] == '.' && r[2] == '/')
-        {
-          *q++ = '/';
-          r += 3;
-        }
-        else
-          *q++ = *r++;
-      }
-      *q = 0;
-    }
-    /* Fix any combo of parent paths. This works by tracking the directory
-     * levels via sub-pointers pointing to original portions of the input path.
-     * These pointers are updated as the levels change by parent paths
-     */
-    if (strstr(p, ".."))
-    {
-      // The directory level tracker (array of pointers)
-      char *level[MUTT_PATH_MAX_DEPTH];
-      /* The following loop works such that if a parent is encountered, then the
-       * current level (n) is reduced so that the next path component
-       * will replace the previous one. But when normal path components
-       * are encountered, the level is incremented. This creates a
-       * mismatch in level depending on which is the last codepath taken.
-       * If the parent is taken last, the level will be one lower than
-       * "current" level. If a normal path component is the last
-       * encountered, then the level would be one higher than "current"
-       * So we need to bring it back up after the loop exits in
-       * that case.
-       */
-      bool parent_last = false;
-      /* */
-      char *r = p;  // iterator
-      size_t n = 0; // current level
-
-      while ((r = strchr(r, '/')) && (r[1] != '\0'))
-      {
-        if ((r[1] == '.') && (r[2] == '.') && ((r[3] == '/') || (r[3] == '\0')))
-        {
-          // decrease dir level -- next path will go to this level
-          if (n > 0)
-            n--;
-
-          parent_last = true;
-        }
-        else
-        {
-          level[n] = r;
-          if (n < MUTT_PATH_MAX_DEPTH)
-            n++;
-
-          parent_last = false;
-        }
-        r++;
-      }
-
-      r = p;  // iterator at path portion of buf (eg if URL)
-
-      if (parent_last && (n == 0))
-      {
-        *r = '/';
-        r[1] = '\0';
-      }
-      else
-      {
-        for (int i = 0; i < n; i++)
-        {
-          *(r++) = level[i][0]; // grab first character ('/')
-          for (char *j = &level[i][1]; *j != '/' && *j != '\0'; j++)
-            *(r++) = *j;
-        }
-        *r = '\0';
-      }
-    }
-    /* Let's cut off the trailing / if it exists and we're not at the root
-     * Note: doing this because the browser GUI is a lil' buggy and if it
-     * sees a path '/a/b/' going to the parent only changes it to '/a/b',
-     * causing the user to have press '..' twice. Honestly, this should be
-     * fixed in the browser but I don't mind removing trailing slashes
-     * from all paths that come through this (non-symlinking) code-path.
-     */
-    len = strlen(buf);
-    if ((buf[len - 1] == '/') && (len > 1))
-      buf[--len] = '\0';
-
-    return len;
   }
 }
 
