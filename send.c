@@ -46,7 +46,6 @@
 #include "mutt_curses.h"
 #include "ncrypt/ncrypt.h"
 #include "options.h"
-#include "parameter.h"
 #include "pattern.h"
 #include "protos.h"
 #include "rfc2047.h"
@@ -1238,7 +1237,7 @@ static int is_reply(struct Header *reply, struct Header *orig)
 static int search_attach_keyword(char *filename)
 {
   /* Search for the regex in AttachKeyword within a file */
-  if (!AttachKeyword || !QuoteRegex)
+  if (!AttachKeyword || !AttachKeyword->regex || !QuoteRegex || !QuoteRegex->regex)
     return 0;
 
   FILE *attf = mutt_file_fopen(filename, "r");
@@ -1534,7 +1533,7 @@ int ci_send_message(int flags, struct Header *msg, char *tempfile,
       if (TextFlowed && msg->content->type == TYPETEXT &&
           (mutt_str_strcasecmp(msg->content->subtype, "plain") == 0))
       {
-        mutt_param_set("format", "flowed", &msg->content->parameter);
+        mutt_param_set(&msg->content->parameter, "format", "flowed");
       }
     }
 
@@ -1648,7 +1647,7 @@ int ci_send_message(int flags, struct Header *msg, char *tempfile,
       if (TextFlowed && msg->content->type == TYPETEXT &&
           (mutt_str_strcasecmp("plain", msg->content->subtype) == 0))
       {
-        char *p = mutt_param_get("format", msg->content->parameter);
+        char *p = mutt_param_get(&msg->content->parameter, "format");
         if (mutt_str_strcasecmp("flowed", NONULL(p)) != 0)
           rfc3676_space_stuff(msg);
       }
