@@ -1400,22 +1400,15 @@ size_t mutt_file_tidy_path(char *buf, bool rsym)
     return mutt_str_strfcpy(buf, NONULL(realpath(buf, s)), PATH_MAX);
   else
   {
-    const size_t MUTT_PATH_MAX_DEPTH = 100;
-    // wrapper
-    size_t buflen = PATH_MAX;
-    char *s = buf;
-    //
-    char *p = s, *q = s;
-    size_t len;
-    char tmp[PATH_MAX];
+    size_t len = 0;
 
     /* cleanup path */
-    if (strstr(p, "//") || strstr(p, "/./"))
+    if (strstr(buf, "//") || strstr(buf, "/./"))
     {
       /* first attempt to collapse the pathname, this is more
        * lightweight than realpath() and doesn't resolve links
        */
-      char *r = p;
+      char *q = buf, *r = buf;
       while (*r)
       {
         if (*r == '/' && r[1] == '/')
@@ -1437,8 +1430,10 @@ size_t mutt_file_tidy_path(char *buf, bool rsym)
      * levels via sub-pointers pointing to original portions of the input path.
      * These pointers are updated as the levels change by parent paths
      */
-    if (strstr(p, ".."))
+    if (strstr(buf, ".."))
     {
+      // How many levels of directories to track
+      const size_t MUTT_PATH_MAX_DEPTH = 100;
       // The directory level tracker (array of pointers)
       char *level[MUTT_PATH_MAX_DEPTH];
       /* The following loop works such that if a parent is encountered, then the
@@ -1454,7 +1449,7 @@ size_t mutt_file_tidy_path(char *buf, bool rsym)
        */
       bool parent_last = false;
       /* */
-      char *r = p;  // iterator
+      char *r = buf;  // iterator
       size_t n = 0; // current level
 
       while ((r = strchr(r, '/')) && (r[1] != '\0'))
@@ -1478,9 +1473,9 @@ size_t mutt_file_tidy_path(char *buf, bool rsym)
         r++;
       }
 
-      r = p;  // iterator at path portion of buf (eg if URL)
+      r = buf;  // iterator from start of path
 
-      if (parent_last && (n == 0))
+      if (parent_last && (n == 0)) // parent of root is root
       {
         *r = '/';
         r[1] = '\0';
