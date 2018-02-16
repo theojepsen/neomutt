@@ -1521,7 +1521,7 @@ void mutt_select_file(char *f, size_t flen, int flags, char ***files, int *numfi
                 }
               }
               /* resolve paths navigated from GUI */
-              if (mutt_file_tidy_path(LastDir, false) == 0)
+              if (mutt_file_tidy_path(LastDir, BrowserResolveSymlinks) == 0)
                 break;
             }
 
@@ -1754,7 +1754,7 @@ void mutt_select_file(char *f, size_t flen, int flags, char ***files, int *numfi
             /* Resolve path from <chdir>
              * Avoids buildup such as /a/b/../../c
              * Symlinks are always unraveled to keep code simple */
-            if (mutt_file_tidy_path(buf, false) == 0)
+            if (mutt_file_tidy_path(buf, BrowserResolveSymlinks) == 0)
               break;
 
             if (stat(buf, &st) == 0)
