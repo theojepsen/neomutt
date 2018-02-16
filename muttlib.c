@@ -1480,21 +1480,7 @@ size_t mutt_realpath(char *buf, bool rsym)
     //
     char *p = s, *q = s;
     size_t len;
-    enum UrlScheme scheme;
     char tmp[PATH_MAX];
-
-    scheme = url_check_scheme(buf);
-
-    /* if s is an url, only collapse path component */
-    if (scheme != U_UNKNOWN)
-    {
-      p = strchr(s, ':') + 1;
-      if (strncmp(p, "//", 2) == 0)
-        q = strchr(p + 2, '/');
-      if (!q)
-        q = strchr(p, '\0');
-      p = q;
-    }
 
     /* cleanup path */
     if (strstr(p, "//") || strstr(p, "/./"))
