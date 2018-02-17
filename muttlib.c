@@ -485,20 +485,19 @@ void mutt_mktemp_full(char *s, size_t slen, const char *prefix,
 
 /**
  * mutt_pretty_mailbox - Shorten a mailbox path using '~' or '='
+ * @param buf    Buffer containing mailbox name to be shortened
+ * @param buflen Length of the buffer
  *
  * Collapse the pathname using ~ or = when possible
  */
-void mutt_pretty_mailbox(char *s, size_t buflen)
+void mutt_pretty_mailbox(char *buf, size_t buflen)
 {
-  enum UrlScheme scheme;
-  size_t len;
-
-  scheme = url_check_scheme(s);
+  enum UrlScheme scheme = url_check_scheme(buf);
 
 #ifdef USE_IMAP
   if (scheme == U_IMAP || scheme == U_IMAPS)
   {
-    imap_pretty_mailbox(s);
+    imap_pretty_mailbox(buf);
     return;
   }
 #endif
@@ -508,28 +507,26 @@ void mutt_pretty_mailbox(char *s, size_t buflen)
     return;
 #endif
 
-  /* the non-symlink realpath impl that was here has been consolidated
-   * without URL parsing into the non-symlinking code-path of
-   * mutt_file_tidy_path()
+  /* The non-symlink realpath impl that was here has been consolidated without
+   * URL parsing into the non-symlinking code-path of mutt_file_tidy_path()
    */
-  mutt_file_tidy_path(s, BrowserResolveSymlinks);
+  mutt_file_tidy_path(buf, BrowserResolveSymlinks);
 
-  /* Collapse pathname using ~ or = if possible. These are illegal for
-   * local filesystem calls so they are not migrated to
-   * mutt_file_tidy_path()
+  /* Collapse pathname using ~ or = if possible. These are illegal for local
+   * filesystem calls so they are not migrated to mutt_file_tidy_path()
    */
-  len = mutt_str_strlen(Folder);
+  size_t len = mutt_str_strlen(Folder);
 
-  if ((mutt_str_strncmp(s, Folder, len) == 0) && s[len] == '/')
+  if ((mutt_str_strncmp(buf, Folder, len) == 0) && (buf[len] == '/'))
   {
-    *s++ = '=';
-    memmove(s, s + len, mutt_str_strlen(s + len) + 1);
+    *buf++ = '=';
+    memmove(buf, buf + len, mutt_str_strlen(buf + len) + 1);
   }
-  else if ((mutt_str_strncmp(s, HomeDir, (len = mutt_str_strlen(HomeDir))) == 0) &&
-           s[len] == '/')
+  else if ((mutt_str_strncmp(buf, HomeDir, (len = mutt_str_strlen(HomeDir))) == 0) &&
+           (buf[len] == '/'))
   {
-    *s++ = '~';
-    memmove(s, s + len - 1, mutt_str_strlen(s + len - 1) + 1);
+    *buf++ = '~';
+    memmove(buf, buf + len - 1, mutt_str_strlen(buf + len - 1) + 1);
   }
 }
 

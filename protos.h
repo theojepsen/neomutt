@@ -200,7 +200,7 @@ void mutt_parse_part(FILE *fp, struct Body *b);
 void mutt_perror_debug(const char *s);
 void mutt_prepare_envelope(struct Envelope *env, int final);
 void mutt_unprepare_envelope(struct Envelope *env);
-void mutt_pretty_mailbox(char *s, size_t buflen);
+void mutt_pretty_mailbox(char *buf, size_t buflen);
 void mutt_pipe_message(struct Header *h);
 void mutt_print_message(struct Header *h);
 void mutt_query_exit(void);
