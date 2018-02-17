@@ -430,7 +430,7 @@ void test_file_tidy_path(void)
   // https://stackoverflow.com/questions/2256945/removing-a-non-empty-directory-programmatically-in-c-or-c#answer-42978529
   // Delete the directory and its contents by traversing the tree in
   // reverse order, without crossing mount boundaries and symbolic links
-  if (nftw(basedir, rmFiles, 10, FTW_DEPTH|FTW_MOUNT|FTW_PHYS) < 0)
+  if (nftw(basedir, rmFiles, 10, (FTW_DEPTH | FTW_MOUNT | FTW_PHYS)) < 0)
   {
     TEST_CHECK(0);
     perror("ERROR: ntfw");
