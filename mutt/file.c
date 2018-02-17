@@ -1448,7 +1448,6 @@ size_t mutt_file_tidy_path(char *buf, bool rsym)
        * that case.
        */
       bool parent_last = false;
-      /* */
       char *r = buf;  // iterator
       size_t n = 0; // current level
 
@@ -1459,7 +1458,6 @@ size_t mutt_file_tidy_path(char *buf, bool rsym)
           // decrease dir level -- next path will go to this level
           if (n > 0)
             n--;
-
           parent_last = true;
         }
         else
@@ -1467,7 +1465,6 @@ size_t mutt_file_tidy_path(char *buf, bool rsym)
           level[n] = r;
           if (n < MUTT_PATH_MAX_DEPTH)
             n++;
-
           parent_last = false;
         }
         r++;
