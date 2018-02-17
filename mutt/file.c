@@ -1402,7 +1402,7 @@ size_t mutt_file_tidy_path(char *buf, bool rsym)
   {
     size_t len = 0;
 
-    /* cleanup path */
+    /* cleanup path - the below "if" migrated from mutt_pretty_mailbox() */
     if (strstr(buf, "//") || strstr(buf, "/./"))
     {
       /* first attempt to collapse the pathname, this is more
