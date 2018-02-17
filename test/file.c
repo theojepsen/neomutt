@@ -10,6 +10,7 @@ static int rmFiles(const char *pathname, const struct stat *sbuf, int type, stru
     perror("ERROR: remove");
     return -1;
   }
+  return 0;
 }
 
 /* This will test both the non-symlink-resolution and symlink-resolving
