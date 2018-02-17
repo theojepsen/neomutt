@@ -1426,26 +1426,29 @@ size_t mutt_file_tidy_path(char *buf, bool rsym)
       }
       *q = 0;
     }
-    /* Fix any combo of parent paths. This works by tracking the directory
-     * levels via sub-pointers pointing to original portions of the input path.
-     * These pointers are updated as the levels change by parent paths
+    /* Fix any combo of parent paths. This works by tracking directory
+     * portions via pointers. These pointers are updated as parent paths
+     * are encountered.
      */
     if (strstr(buf, ".."))
     {
       // How many levels of directories to track
       const size_t MUTT_PATH_MAX_DEPTH = 100;
       // The directory level tracker (array of pointers)
+      /* This tracks which substrings of the path belong to which depth in
+       * the directory tree.
+       */
       char *level[MUTT_PATH_MAX_DEPTH];
-      /* The following loop works such that if a parent is encountered, then the
-       * current level (n) is reduced so that the next path component
-       * will replace the previous one. But when normal path components
-       * are encountered, the level is incremented. This creates a
-       * mismatch in level depending on which is the last codepath taken.
-       * If the parent is taken last, the level will be one lower than
-       * "current" level. If a normal path component is the last
-       * encountered, then the level would be one higher than "current"
-       * So we need to bring it back up after the loop exits in
-       * that case.
+      /* The following loop works such that if a parent directory is encountered,
+       * then the current level n is decremented so that the next path substring 
+       * will replace the previous one in the level array. Otherwise, the 
+       * level is incremented.
+       *
+       * Given the current nature of the loop, if a parent directory is
+       * encountered last, the level n will be one lower than the actual
+       * "current" level. Otherwise, the level will be one higher than "current".
+       * So, some adjusting is necessary after the loop exits. This could
+       * possibly be optimized out with a different loop design.
        */
       bool parent_last = false;
       char *r = buf;  // iterator
@@ -1472,16 +1475,17 @@ size_t mutt_file_tidy_path(char *buf, bool rsym)
 
       r = buf;  // iterator from start of path
 
-      if (parent_last && (n == 0)) // parent of root is root
+      if (parent_last && (n == 0)) // The parent of root, is simply root
       {
         *r = '/';
         r[1] = '\0';
       }
       else
       {
-        for (int i = 0; i < n; i++)
+        for (int i = 0; i < n; i++) // iterate through tracked dir hierarchy
         {
-          *(r++) = level[i][0]; // grab first character ('/')
+          *(r++) = level[i][0]; // write the first character ('/')
+          // write the path component until '/' or end-of-string
           for (char *j = &level[i][1]; *j != '/' && *j != '\0'; j++)
             *(r++) = *j;
         }
