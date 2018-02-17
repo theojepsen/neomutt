@@ -512,7 +512,7 @@ void mutt_pretty_mailbox(char *s, size_t buflen)
    * without URL parsing into the non-symlinking code-path of
    * mutt_file_tidy_path()
    */
-  mutt_file_tidy_path(s, false);
+  mutt_file_tidy_path(s, BrowserResolveSymlinks);
 
   /* Collapse pathname using ~ or = if possible. These are illegal for
    * local filesystem calls so they are not migrated to
