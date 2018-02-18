@@ -218,12 +218,12 @@ void test_file_tidy_path(void)
   { // non-existent
     char noexist[] = "/nonexistent/path/for/sure/1q2w3e";
     len = mutt_file_tidy_path(noexist, true);
-    if (!TEST_CHECK(len == 0))
+    if (!TEST_CHECK(len == strlen("/nonexistent/path/for/sure/1q2w3e")))
     {
       TEST_MSG("Expected: %zu", 0);
       TEST_MSG("Actual  : %zu", len);
     }
-    if (!TEST_CHECK(strcmp(noexist, "") == 0))
+    if (!TEST_CHECK(strcmp(noexist, "/nonexistent/path/for/sure/1q2w3e") == 0))
     {
       TEST_MSG("Expected: %s", "");
       TEST_MSG("Actual  : %s", noexist);
