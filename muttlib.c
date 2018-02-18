@@ -517,13 +517,13 @@ void mutt_pretty_mailbox(char *buf, size_t buflen)
    */
   size_t len = mutt_str_strlen(Folder);
 
-  if ((mutt_str_strncmp(buf, Folder, len) == 0) && (buf[len] == '/'))
+  if ((mutt_str_strncmp(buf, Folder, len) == 0) && ((buf[len] == '/') || (buf[len] == '\0')))
   {
     *buf++ = '=';
     memmove(buf, buf + len, mutt_str_strlen(buf + len) + 1);
   }
   else if ((mutt_str_strncmp(buf, HomeDir, (len = mutt_str_strlen(HomeDir))) == 0) &&
-           (buf[len] == '/'))
+           ((buf[len] == '/') || (buf[len] == '\0')))
   {
     *buf++ = '~';
     memmove(buf, buf + len - 1, mutt_str_strlen(buf + len - 1) + 1);

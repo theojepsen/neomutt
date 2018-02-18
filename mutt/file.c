@@ -1397,7 +1397,13 @@ size_t mutt_file_tidy_path(char *buf, bool rsym)
   char s[PATH_MAX];
 
   if (rsym)
-    return mutt_str_strfcpy(buf, NONULL(realpath(buf, s)), PATH_MAX);
+  {
+    char *rp = realpath(buf, s);
+    if (rp)
+      return mutt_str_strfcpy(buf, rp, PATH_MAX);
+    else
+      return mutt_str_strlen(buf);
+  }
   else
   {
     size_t len = 0;
@@ -1502,7 +1508,7 @@ size_t mutt_file_tidy_path(char *buf, bool rsym)
      * from all paths that come through this (non-symlinking) code-path.
      */
     len = strlen(buf);
-    if ((buf[len - 1] == '/') && (len > 1))
+    if ((len > 1) && (buf[len - 1] == '/'))
       buf[--len] = '\0';
 
     return len;
