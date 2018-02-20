@@ -39,6 +39,7 @@
 #include <errno.h>
 #include <stdarg.h>
 #include <stdio.h>
+#include <string.h>
 #include <sys/time.h>
 #include <time.h>
 #include "mutt/mutt.h"
@@ -166,6 +167,17 @@ int log_disp_curses(time_t stamp, const char *file, int line,
   int ret = vsnprintf(buf, sizeof(buf), fmt, ap);
   va_end(ap);
 
+  if (level == LL_PERROR)
+  {
+    char *buf2 = buf + ret;
+    int len = sizeof(buf) - ret;
+    char *p = strerror(errno);
+    if (!p)
+      p = _("unknown error");
+
+    ret += snprintf(buf2, len, ": %s (errno = %d)", p, errno);
+  }
+
   log_disp_file(stamp, file, line, function, level, "%s", buf);
   if (stamp == 0)
     log_disp_queue(stamp, file, line, function, level, "%s", buf);
@@ -227,7 +239,7 @@ void mutt_log_start(void)
   if (DebugLevel == 0)
     return;
 
-  log_file_open();
+  log_file_open(false);
 }
 
 /**
@@ -235,7 +247,7 @@ void mutt_log_start(void)
  */
 void mutt_log_stop(void)
 {
-  log_file_close();
+  log_file_close(false);
 }
 
 /**

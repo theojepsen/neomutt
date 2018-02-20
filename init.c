@@ -4053,7 +4053,7 @@ void mutt_init(int skip_sys_rc, struct ListHead *commands)
   if (need_pause && !OPT_NO_CURSES)
   {
     log_queue_flush(log_disp_stderr);
-    if (mutt_any_key_to_continue(NULL) == -1)
+    if (mutt_any_key_to_continue(NULL) == 'q')
       mutt_exit(1);
   }
 

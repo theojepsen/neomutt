@@ -127,7 +127,7 @@ int log_file_set_filename(const char *file)
   if (!LogFileFP)
     return -1;
 
-  log_file_open();
+  log_file_open(true);
   return 0;
 }
 
@@ -150,11 +150,11 @@ int log_file_set_level(int level)
   LogFileLevel = level;
 
   if (level == 0)
-    log_file_close();
+    log_file_close(true);
   else if (LogFileFP)
     mutt_message(_("Logging at level %d"), LogFileLevel);
   else
-    log_file_open();
+    log_file_open(true);
 
   return 0;
 }
@@ -173,32 +173,35 @@ void log_file_set_version(const char *version)
 
 /**
  * log_file_close - Close the log file
+ * @param verbose If true, then log the event
  */
-void log_file_close(void)
+void log_file_close(bool verbose)
 {
   if (!LogFileFP)
     return;
 
   fprintf(LogFileFP, "[%s] Closing log.\n", timestamp(0));
   mutt_file_fclose(&LogFileFP);
-  mutt_message(_("Closed log file: %s"), LogFileName);
+  if (verbose)
+    mutt_message(_("Closed log file: %s"), LogFileName);
 }
 
 /**
  * log_file_open - Start logging to a file
+ * @param verbose If true, then log the event
  * @retval  0 Success
  * @retval -1 Error, see errno
  *
  * Before opening a log file, call log_file_set_version(), log_file_set_level()
  * and log_file_set_filename().
  */
-int log_file_open(void)
+int log_file_open(bool verbose)
 {
   if (!LogFileName)
     return -1;
 
   if (LogFileFP)
-    log_file_close();
+    log_file_close(false);
 
   LogFileFP = mutt_file_fopen(LogFileName, "a+");
   if (!LogFileFP)
@@ -206,7 +209,8 @@ int log_file_open(void)
 
   fprintf(LogFileFP, "[%s] NeoMutt%s debugging at level %d\n", timestamp(0),
           NONULL(LogFileVersion), LogFileLevel);
-  mutt_message(_("Debugging at level %d to file '%s'"), LogFileLevel, LogFileName);
+  if (verbose)
+    mutt_message(_("Debugging at level %d to file '%s'"), LogFileLevel, LogFileName);
   return 0;
 }
 
@@ -466,14 +470,13 @@ int log_disp_stderr(time_t stamp, const char *file, int line,
         colour = 33;
         break;
       case LL_MESSAGE:
-        colour = 36;
+        // colour = 36;
         break;
       case LL_DEBUG1:
       case LL_DEBUG2:
       case LL_DEBUG3:
       case LL_DEBUG4:
       case LL_DEBUG5:
-        colour = 30;
         break;
     }
   }

@@ -318,7 +318,7 @@ int main(int argc, char **argv, char **env)
 
         case 'd':
           if ((mutt_str_atos(optarg, &DebugLevel) < 0) ||
-              (DebugLevel < LL_DEBUG1) || (DebugLevel > LL_DEBUG5))
+              (DebugLevel < LL_MESSAGE) || (DebugLevel > LL_DEBUG5))
           {
             mutt_error(_("Error: value '%s' is invalid for -d."), optarg);
             log_queue_flush(log_disp_stderr);
@@ -708,7 +708,7 @@ int main(int argc, char **argv, char **env)
         context_hdr = mutt_new_header();
         context_hdr->offset = 0;
         context_hdr->content = mutt_new_body();
-        if (fstat(fileno(fin), &st))
+        if (fstat(fileno(fin), &st) != 0)
         {
           perror(draft_file);
           exit(1);
@@ -847,7 +847,7 @@ int main(int argc, char **argv, char **env)
     mutt_free_windows();
     mutt_endwin();
 
-    if (rv)
+    if (rv != 0)
       exit(1);
   }
   else

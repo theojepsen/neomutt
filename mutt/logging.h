@@ -23,6 +23,7 @@
 #ifndef _LOGGING_H
 #define _LOGGING_H
 
+#include <stdbool.h>
 #include <stdio.h>
 #include <time.h>
 #include "queue.h"
@@ -85,8 +86,8 @@ void log_queue_flush(log_dispatcher_t disp);
 int  log_queue_save(FILE *fp);
 void log_queue_set_max_size(int size);
 
-void log_file_close(void);
-int  log_file_open(void);
+void log_file_close(bool verbose);
+int  log_file_open(bool verbose);
 int  log_file_set_filename(const char *file);
 int  log_file_set_level(int level);
 void log_file_set_version(const char *version);
