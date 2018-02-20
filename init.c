@@ -4040,7 +4040,7 @@ int mutt_init(int skip_sys_rc, struct ListHead *commands)
 
   if (need_pause && !OPT_NO_CURSES)
   {
-    log_queue_flush(log_disp_stderr);
+    log_queue_flush(log_disp_terminal);
     if (mutt_any_key_to_continue(NULL) == 'q')
       return 1;
   }

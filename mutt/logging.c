@@ -33,7 +33,7 @@
  * | :----------------------- | :-----------------------------------------------
  * | log_disp_file()          | Save a log line to a file
  * | log_disp_queue()         | Save a log line to an internal queue
- * | log_disp_stderr()        | Save a log line to stderr
+ * | log_disp_terminal()      | Save a log line to the terminal
  * | log_file_close()         | Close the log file
  * | log_file_open()          | Start logging to a file
  * | log_file_set_filename()  | Set the filename for the log
@@ -69,7 +69,7 @@ const char *LevelAbbr = "PEWM12345"; /**< Abbreviations of logging level names *
  *
  * This function pointer controls where log messages are redirected.
  */
-log_dispatcher_t MuttLogger = log_disp_stderr;
+log_dispatcher_t MuttLogger = log_disp_terminal;
 
 FILE *LogFileFP = NULL;      /**< Log file handle */
 char *LogFileName = NULL;    /**< Log file name */
@@ -421,7 +421,7 @@ int log_disp_queue(time_t stamp, const char *file, int line,
 }
 
 /**
- * log_disp_stderr - Save a log line to stderr
+ * log_disp_terminal - Save a log line to the terminal
  * @param stamp    Unix time (optional)
  * @param file     Source file (UNUSED)
  * @param line     Source line (UNUSED)
@@ -432,14 +432,15 @@ int log_disp_queue(time_t stamp, const char *file, int line,
  * @retval  0 Success, filtered
  * @retval >0 Success, number of characters written
  *
- * This log dispatcher saves a line of text to stderr.  The format is:
+ * This log dispatcher saves a line of text to the terminal.
+ * The format is:
  * * `[TIMESTAMP]<LEVEL> FUNCTION() FORMATTED-MESSAGE`
  *
  * @note The output will be coloured using ANSI escape sequences,
  *       unless the output is redirected.
  */
-int log_disp_stderr(time_t stamp, const char *file, int line,
-                    const char *function, int level, ...)
+int log_disp_terminal(time_t stamp, const char *file, int line,
+                      const char *function, int level, ...)
 {
   if ((level < LL_PERROR) || (level > LogFileLevel))
     return 0;
@@ -454,9 +455,10 @@ int log_disp_stderr(time_t stamp, const char *file, int line,
 
   log_disp_file(stamp, file, line, function, level, "%s", buf);
 
+  FILE *fp = (level < LL_MESSAGE) ? stderr : stdout;
   int err = errno;
   int colour = 0;
-  bool tty = (isatty(fileno(stderr)) == 1);
+  bool tty = (isatty(fileno(fp)) == 1);
 
   if (tty)
   {
@@ -482,18 +484,18 @@ int log_disp_stderr(time_t stamp, const char *file, int line,
   }
 
   if (colour > 0)
-    ret += fprintf(stderr, "\033[1;%dm", colour);
+    ret += fprintf(fp, "\033[1;%dm", colour);
 
-  fputs(buf, stderr);
+  fputs(buf, fp);
 
   if (level == LL_PERROR)
-    ret += fprintf(stderr, ": %s", strerror(err));
+    ret += fprintf(fp, ": %s", strerror(err));
 
   if (colour > 0)
-    ret += fprintf(stderr, "\033[0m");
+    ret += fprintf(fp, "\033[0m");
 
   if (level < 1)
-    ret += fprintf(stderr, "\n");
+    ret += fprintf(fp, "\n");
 
   return ret;
 }

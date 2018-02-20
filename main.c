@@ -144,9 +144,9 @@ static int start_curses(void)
 #endif
   if (!initscr())
   {
-    MuttLogger = log_disp_stderr;
+    MuttLogger = log_disp_terminal;
     mutt_error(_("Error initializing terminal."));
-    log_queue_flush(log_disp_stderr);
+    log_queue_flush(log_disp_terminal);
     return 1;
   }
   /* slang requires the signal handlers to be set after initializing */
@@ -321,7 +321,7 @@ int main(int argc, char **argv, char **env)
               (DebugLevel < LL_MESSAGE) || (DebugLevel > LL_DEBUG5))
           {
             mutt_error(_("Error: value '%s' is invalid for -d."), optarg);
-            log_queue_flush(log_disp_stderr);
+            log_queue_flush(log_disp_terminal);
             goto main_exit;
           }
           set_default_value("debug_level", (intptr_t) DebugLevel);
@@ -429,7 +429,7 @@ int main(int argc, char **argv, char **env)
 
   if (version > 0)
   {
-    log_queue_flush(log_disp_stderr);
+    log_queue_flush(log_disp_terminal);
     if (version == 1)
       print_version();
     else
@@ -471,8 +471,8 @@ int main(int argc, char **argv, char **env)
   if (rc != 0)
     goto main_curses;
 
-  MuttLogger = log_disp_stderr;
-  log_queue_flush(log_disp_stderr);
+  MuttLogger = log_disp_terminal;
+  log_queue_flush(log_disp_terminal);
 
   mutt_list_free(&commands);
 
