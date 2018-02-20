@@ -3600,13 +3600,13 @@ int mutt_query_variables(struct ListHead *queries)
     snprintf(command, sizeof(command), "set ?%s\n", np->data);
     if (mutt_parse_rc_line(command, &token, &err) == -1)
     {
-      fprintf(stderr, "%s\n", err.data);
+      mutt_error("%s", err.data);
       FREE(&token.data);
       FREE(&err.data);
 
       return 1;
     }
-    printf("%s\n", err.data);
+    mutt_message("%s", err.data);
   }
 
   FREE(&token.data);
@@ -3637,19 +3637,19 @@ int mutt_dump_variables(int hide_sensitive)
 
     if (hide_sensitive && IS_SENSITIVE(MuttVars[i]))
     {
-      printf("%s='***'\n", MuttVars[i].name);
+      mutt_message("%s='***'\n", MuttVars[i].name);
       continue;
     }
     snprintf(command, sizeof(command), "set ?%s\n", MuttVars[i].name);
     if (mutt_parse_rc_line(command, &token, &err) == -1)
     {
-      fprintf(stderr, "%s\n", err.data);
+      mutt_message("%s", err.data);
       FREE(&token.data);
       FREE(&err.data);
 
       return 1;
     }
-    printf("%s\n", err.data);
+    mutt_message("%s", err.data);
   }
 
   FREE(&token.data);
@@ -3718,7 +3718,7 @@ static char *find_cfg(const char *home, const char *xdg_cfg_home)
   return NULL;
 }
 
-void mutt_init(int skip_sys_rc, struct ListHead *commands)
+int mutt_init(int skip_sys_rc, struct ListHead *commands)
 {
   struct passwd *pw = NULL;
   struct utsname utsname;
@@ -3768,22 +3768,16 @@ void mutt_init(int skip_sys_rc, struct ListHead *commands)
   {
     if (!HomeDir)
     {
-      mutt_endwin();
-      MuttLogger = log_disp_stderr;
       mutt_error(_("unable to determine home directory"));
-      log_queue_flush(log_disp_stderr);
-      exit(1);
+      return 1;
     }
     p = mutt_str_getenv("USER");
     if (p)
       Username = mutt_str_strdup(p);
     else
     {
-      mutt_endwin();
-      MuttLogger = log_disp_stderr;
       mutt_error(_("unable to determine username"));
-      log_queue_flush(log_disp_stderr);
-      exit(1);
+      return 1;
     }
     Shell = mutt_str_strdup((p = mutt_str_getenv("SHELL")) ? p : "/bin/sh");
   }
@@ -3797,9 +3791,8 @@ void mutt_init(int skip_sys_rc, struct ListHead *commands)
    */
   if ((uname(&utsname)) == -1)
   {
-    mutt_endwin();
-    perror(_("unable to determine nodename via uname()"));
-    exit(1);
+    mutt_perror(_("unable to determine nodename via uname()"));
+    return 1;
   }
 
   /* some systems report the FQDN instead of just the hostname */
@@ -3983,11 +3976,8 @@ void mutt_init(int skip_sys_rc, struct ListHead *commands)
       np->data = mutt_str_strdup(buffer);
       if (access(np->data, F_OK))
       {
-        mutt_endwin();
-        MuttLogger = log_disp_stderr;
         mutt_perror(np->data);
-        log_queue_flush(log_disp_stderr);
-        exit(1);
+        return 1;
       }
     }
   }
@@ -4037,8 +4027,6 @@ void mutt_init(int skip_sys_rc, struct ListHead *commands)
   {
     if (np->data)
     {
-      if (!OPT_NO_CURSES)
-        endwin();
       if (source_rc(np->data, &err) != 0)
       {
         mutt_error("%s", err.data);
@@ -4054,7 +4042,7 @@ void mutt_init(int skip_sys_rc, struct ListHead *commands)
   {
     log_queue_flush(log_disp_stderr);
     if (mutt_any_key_to_continue(NULL) == 'q')
-      mutt_exit(1);
+      return 1;
   }
 
   mutt_file_mkdir(Tmpdir, S_IRWXU);
@@ -4078,6 +4066,7 @@ void mutt_init(int skip_sys_rc, struct ListHead *commands)
 #endif
 
   FREE(&err.data);
+  return 0;
 }
 
 int mutt_get_hook_type(const char *name)
